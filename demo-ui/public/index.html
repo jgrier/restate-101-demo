@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Restate 101 — live demo</title>
+<style>
+  :root{
+    --bg:#0f1226; --panel:#191d3a; --panel2:#21264a; --line:#2e3566;
+    --text:#e8eaf6; --muted:#9aa0c9; --accent:#f4137a; --accent2:#7c5cff;
+    --ok:#27c498; --err:#ff5d6c; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:20px;margin:0;font-weight:650}
+  header .tag{color:var(--muted);font-size:14px}
+  header a{margin-left:auto;color:var(--accent2);text-decoration:none;font-size:14px;border:1px solid var(--line);padding:7px 12px;border-radius:8px}
+  header a:hover{border-color:var(--accent2)}
+  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;padding:22px 28px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px}
+  .card h2{margin:0 0 2px;font-size:16px}
+  .card .kind{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  .card p.desc{color:var(--muted);font-size:13px;margin:8px 0 14px;line-height:1.45}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:9px 10px;border-radius:8px;font-size:14px}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);
+    padding:6px 10px;border-radius:20px;font-size:13px;cursor:pointer;user-select:none}
+  .chip input{width:auto}
+  .chip.blocked{border-color:var(--accent)}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button{background:var(--accent2);color:#fff;border:0;padding:10px 14px;border-radius:9px;font-size:14px;
+    font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.1)} button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+  button.danger{background:var(--accent)}
+  button.ok{background:var(--ok)}
+  .out{margin-top:14px;font-family:var(--mono);font-size:13px;background:#0b0e22;border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;min-height:38px;white-space:pre-wrap;word-break:break-word}
+  .badge{display:inline-block;font-family:var(--mono);font-size:12px;padding:2px 7px;border-radius:6px;margin-right:8px}
+  .b-ok{background:rgba(39,196,152,.15);color:var(--ok)} .b-err{background:rgba(255,93,108,.15);color:var(--err)}
+  .b-info{background:rgba(124,92,255,.15);color:var(--accent2)}
+  /* console */
+  #console{margin:0 28px 28px;background:#0b0e22;border:1px solid var(--line);border-radius:12px}
+  #console .head{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+  #console .head h3{margin:0;font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  #console .head button{margin-left:auto;padding:5px 10px;font-size:12px}
+  #log{font-family:var(--mono);font-size:12.5px;padding:12px 14px;max-height:260px;overflow:auto;line-height:1.5}
+  #log .line{margin-bottom:8px;border-bottom:1px dashed #1c2147;padding-bottom:8px}
+  #log .req{color:var(--accent2)} #log .res-ok{color:var(--ok)} #log .res-err{color:var(--err)}
+  #log .body{color:var(--muted)} .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Restate&nbsp;101</h1>
+  <span class="tag">live demo · talking to the ingress on <code>:8080</code></span>
+  <a href="http://localhost:9070/ui" target="_blank">Open Restate journal UI ↗</a>
+</header>
+
+<main>
+  <!-- 1. SERVICE / SAGA -->
+  <section class="card">
+    <div class="kind">Service · Saga</div>
+    <h2>Subscription signup</h2>
+    <p class="desc">A durable function: each step is journaled &amp; retried. If a step fails permanently,
+      the compensations run in reverse. Tick <b>blocked</b> to trigger a Saga rollback.</p>
+    <label>User id</label>
+    <input id="sub-user" value="alice" />
+    <label>Credit card</label>
+    <input id="sub-card" value="4242-4242-4242-1234" />
+    <label>Plans</label>
+    <div class="chips" id="sub-plans">
+      <label class="chip"><input type="checkbox" value="paid" checked> paid</label>
+      <label class="chip"><input type="checkbox" value="pro" checked> pro</label>
+      <label class="chip blocked"><input type="checkbox" value="blocked"> blocked</label>
+    </div>
+    <div class="btns">
+      <button onclick="addSubscription()">Add subscription</button>
+    </div>
+    <div class="out" id="sub-out"><span class="muted">Result appears here…</span></div>
+  </section>
+
+  <!-- 2. VIRTUAL OBJECT -->
+  <section class="card">
+    <div class="kind">Virtual Object</div>
+    <h2>Account</h2>
+    <p class="desc">Durable keyed state, no database. Restate runs one writer per key at a time —
+      so concurrent writes never race. State survives restarts.</p>
+    <label>Account key</label>
+    <input id="acc-key" value="acct-42" />
+    <div class="row">
+      <div><label>Amount (cents)</label><input id="acc-amt" type="number" value="2500" /></div>
+    </div>
+    <div class="btns">
+      <button onclick="acct('deposit')">Deposit</button>
+      <button class="ghost" onclick="acct('withdraw')">Withdraw</button>
+      <button class="ghost" onclick="balance()">Balance</button>
+    </div>
+    <div class="btns">
+      <button class="ok" onclick="raceTest()">⚡ 20 concurrent deposits of 100</button>
+    </div>
+    <div class="out" id="acc-out"><span class="muted">Balance appears here…</span></div>
+  </section>
+
+  <!-- 3. WORKFLOW -->
+  <section class="card">
+    <div class="kind">Workflow</div>
+    <h2>Payment approval</h2>
+    <p class="desc">A durable, long-running process. It notifies an approver (retrying the flaky call),
+      then waits — for up to 3 days — for a human decision. Survives a server restart.</p>
+    <label>Workflow id</label>
+    <input id="wf-id" value="txn-1001" />
+    <div class="row">
+      <div><label>From</label><input id="wf-from" value="acct-42" /></div>
+      <div><label>To</label><input id="wf-to" value="acct-99" /></div>
+    </div>
+    <label>Amount (cents)</label>
+    <input id="wf-amt" type="number" value="5000000" />
+    <div class="btns">
+      <button onclick="wfStart()">Start payment</button>
+      <button class="ok" onclick="wfDecide(true)">Approve</button>
+      <button class="danger" onclick="wfDecide(false)">Reject</button>
+      <button class="ghost" onclick="wfResult()">Get result</button>
+    </div>
+    <div class="out" id="wf-out"><span class="muted">Status appears here…</span></div>
+  </section>
+</main>
+
+<div id="console">
+  <div class="head"><h3>REQUEST CONSOLE</h3><button class="ghost" onclick="clearLog()">clear</button></div>
+  <div id="log"></div>
+</div>
+
+<script>
+const logEl = document.getElementById("log");
+function clearLog(){ logEl.innerHTML = ""; }
+function logReq(method, path, status, body){
+  const ok = status >= 200 && status < 300;
+  const div = document.createElement("div");
+  div.className = "line";
+  div.innerHTML =
+    `<span class="req">${method} /api${path}</span>  ` +
+    `<span class="${ok?'res-ok':'res-err'}">→ HTTP ${status}</span>` +
+    (body ? `\n<span class="body">${escapeHtml(body)}</span>` : "");
+  logEl.prepend(div);
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// generic ingress call through the proxy
+async function call(method, path, {json, idem} = {}){
+  const opts = { method, headers: {} };
+  if (json !== undefined){ opts.headers["content-type"] = "application/json"; opts.body = JSON.stringify(json); }
+  if (idem) opts.headers["idempotency-key"] = idem;
+  let status = 0, text = "";
+  try {
+    const res = await fetch("/api" + path, opts);
+    status = res.status; text = await res.text();
+  } catch (e) { text = String(e); }
+  logReq(method, path, status, text);
+  return { status, text };
+}
+function badge(status){
+  const ok = status >= 200 && status < 300;
+  return `<span class="badge ${ok?'b-ok':'b-err'}">HTTP ${status}</span>`;
+}
+
+// --- 1. Subscription service / saga ---
+async function addSubscription(){
+  const userId = val("sub-user"), creditCard = val("sub-card");
+  const subscriptions = [...document.querySelectorAll("#sub-plans input:checked")].map(c => c.value);
+  const out = document.getElementById("sub-out");
+  out.innerHTML = '<span class="muted">running…</span>';
+  const { status, text } = await call("POST", "/SubscriptionService/add", { json: { userId, creditCard, subscriptions } });
+  if (status >= 200 && status < 300){
+    out.innerHTML = badge(status) + `Subscribed <b>${userId}</b> to: ${subscriptions.join(", ")}. ` +
+      `<div class="muted" style="margin-top:6px">All steps committed. See the journal in the Restate UI.</div>`;
+  } else {
+    out.innerHTML = badge(status) + `<b>Saga rollback.</b> ${parseMsg(text)}` +
+      `<div class="muted" style="margin-top:6px">Earlier steps were compensated in reverse — check the server log / journal.</div>`;
+  }
+}
+
+// --- 2. Account virtual object ---
+async function acct(op){
+  const key = val("acc-key"), amount = Number(val("acc-amt"));
+  const out = document.getElementById("acc-out");
+  const { status, text } = await call("POST", `/Account/${encodeURIComponent(key)}/${op}`, { json: amount });
+  if (status >= 200 && status < 300) out.innerHTML = badge(status) + `<b>${key}</b> ${op} ${amount} → balance <b>${text}</b>`;
+  else out.innerHTML = badge(status) + parseMsg(text);
+}
+async function balance(){
+  const key = val("acc-key");
+  const out = document.getElementById("acc-out");
+  const { status, text } = await call("GET", `/Account/${encodeURIComponent(key)}/balance`);
+  if (status >= 200 && status < 300) out.innerHTML = badge(status) + `<b>${key}</b> balance = <b>${text}</b> cents`;
+  else out.innerHTML = badge(status) + parseMsg(text);
+}
+async function raceTest(){
+  const key = val("acc-key");
+  const out = document.getElementById("acc-out");
+  out.innerHTML = '<span class="muted">firing 20 concurrent deposits of 100…</span>';
+  await Promise.all(Array.from({length:20}, () => call("POST", `/Account/${encodeURIComponent(key)}/deposit`, { json: 100 })));
+  const { status, text } = await call("GET", `/Account/${encodeURIComponent(key)}/balance`);
+  out.innerHTML = badge(status) + `After 20×100 concurrent deposits, <b>${key}</b> moved up by exactly <b>2000</b> ` +
+    `(now ${text}). No locks, no lost updates.`;
+}
+
+// --- 3. Payment approval workflow ---
+async function wfStart(){
+  const id = val("wf-id");
+  const body = { fromAccount: val("wf-from"), toAccount: val("wf-to"), amountCents: Number(val("wf-amt")), memo: "ui demo" };
+  const out = document.getElementById("wf-out");
+  const { status, text } = await call("POST", `/PaymentApprovalWorkflow/${encodeURIComponent(id)}/run/send`, { json: body });
+  out.innerHTML = badge(status) + `Started <b>${id}</b>. Notifying approver (retrying the flaky call), then waiting for a decision…` +
+    `<div class="muted" style="margin-top:6px">Tip: restart restate-server now — it keeps waiting. Then Approve/Reject.</div>`;
+}
+async function wfDecide(approved){
+  const id = val("wf-id");
+  const out = document.getElementById("wf-out");
+  const { status, text } = await call("POST", `/PaymentApprovalWorkflow/${encodeURIComponent(id)}/decide`, { json: approved });
+  if (status >= 200 && status < 300) out.innerHTML = badge(status) + `Decision sent: <b>${approved ? "APPROVED" : "REJECTED"}</b>. Click “Get result”.`;
+  else out.innerHTML = badge(status) + parseMsg(text);
+}
+async function wfResult(){
+  const id = val("wf-id");
+  const out = document.getElementById("wf-out");
+  const { status, text } = await call("GET", `/restate/workflow/PaymentApprovalWorkflow/${encodeURIComponent(id)}/output`);
+  if (status >= 200 && status < 300) out.innerHTML = badge(status) + `Result: <b>${parseMsg(text)}</b>`;
+  else out.innerHTML = badge(status) + `<span class="muted">No result yet — still waiting for a decision (or not started).</span>`;
+}
+
+function val(id){ return document.getElementById(id).value.trim(); }
+function parseMsg(text){ try { const j = JSON.parse(text); return j.message ?? text; } catch { return text; } }
+</script>
+</body>
+</html>

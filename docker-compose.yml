@@ -1,0 +1,47 @@
+name: restate-101
+
+# Everything for the demo runs in Docker — no reliance on host-installed
+# restate-server, JDK, or Node. Bring it all up with ./scripts/start.sh.
+
+services:
+  # The Restate server (durability, retries, state, the log). Pinned to a version
+  # via Docker so it never depends on whatever is installed on the machine.
+  restate:
+    image: ${RESTATE_IMAGE:-docker.restate.dev/restatedev/restate:1.7.0}
+    container_name: restate-101-server
+    # Pin a stable node name so the server resumes from the volume across container
+    # recreations (otherwise the default name is the random container id and Restate
+    # refuses to start on existing data).
+    command: ["--node-name=restate-101", "--base-dir=/restate-data"]
+    ports:
+      - "8080:8080"   # ingress  — call your services through here
+      - "9070:9070"   # admin API + Web UI (http://localhost:9070)
+      - "9071:9071"   # node-to-node
+    volumes:
+      - restate-data:/restate-data   # persists state across restarts (durable-wait demo)
+
+  # Our Java handlers (Restate Java SDK 2.8.0), built in-image with JDK 17.
+  demo:
+    build: ./demo
+    container_name: restate-101-demo
+    ports:
+      - "9080:9080"   # the SDK endpoint Restate calls into (exposed for debugging)
+
+  # The clickable demo UI. Zero-dep Node server; proxies to the Restate ingress.
+  ui:
+    image: node:22-alpine
+    container_name: restate-101-ui
+    working_dir: /app
+    volumes:
+      - ./demo-ui:/app
+    command: ["node", "server.mjs"]
+    environment:
+      - PORT=8088
+      - RESTATE_INGRESS=http://restate:8080   # reach the ingress over the compose network
+    ports:
+      - "8088:8088"   # open http://localhost:8088
+    depends_on:
+      - restate
+
+volumes:
+  restate-data:
