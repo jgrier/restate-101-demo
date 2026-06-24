@@ -338,6 +338,41 @@ NOTE: the per-step ctx.* API (run/get/set/sleep/call) is covered on the "toolbox
 
 ---
 
+## …and here's Service A's code
+
+It just looks like normal function calls — but each one is **durable, exactly-once RPC**.
+
+```java
+@Service
+public class ServiceA {
+
+  @Handler
+  public Result handle(Context ctx, Request req) {
+    // Looks like a plain method call; under the hood it's brokered
+    // and journaled by Restate, and replayed on recovery.
+    ResultB b = ServiceBClient.fromContext(ctx).stepB(req.id()).await();
+    ResultC c = ServiceCClient.fromContext(ctx).stepC(req.id()).await();
+
+    // Plain Java in between — combine the answers and return.
+    return new Result(b.value() + c.value());
+  }
+}
+```
+
+The only differences from code you already write: a **`Context ctx`** parameter,
+calls via a generated **`…Client.fromContext(ctx)`**, and **`.await()`**.
+No queues, no state machine, no retry/idempotency boilerplate.
+
+<!--
+SPEAKER: Pay off the diagram with real code. The whole pitch in one slide: this is
+just a function that calls two others and combines results — yet it's durable and
+exactly-once. Point out the three tiny differences, then stress what's NOT here: no
+queue, no saga engine, no idempotency keys, no retry loop. To run B and C in
+parallel you simply don't .await() until after both are kicked off.
+-->
+
+---
+
 ## Three building blocks
 
 | | Annotation | Has state? | Concurrency |
