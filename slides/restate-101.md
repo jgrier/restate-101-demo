@@ -233,31 +233,107 @@ comparisons to a follow-up.
 
 ---
 
-## The mental model
+## Request flow — the logical view
 
-<div class="flow">
-  <div class="node">
-    <div class="t">Client / event</div>
-    <div class="s">calls come in<br>through Restate</div>
-  </div>
-  <div class="arrow">▶<div class="back">◀ results</div></div>
-  <div class="node server">
-    <div class="t">Restate server</div>
-    <div class="s">durability · retries<br>state · timers · the log</div>
-  </div>
-  <div class="arrow">▶<div class="back">◀ ctx.*</div></div>
-  <div class="node">
-    <div class="t">Your handlers</div>
-    <div class="s">plain Java<br>ctx.run / get / set / sleep</div>
-  </div>
+Service A handles a request by calling B, then C, and returns a synthesized result.
+
+<div style="text-align:center">
+<svg viewBox="0 0 1000 430" width="880" style="max-width:100%;height:auto">
+  <defs>
+    <marker id="ah1" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1a45ff"/></marker>
+    <marker id="ag1" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa6bd"/></marker>
+  </defs>
+  <style>
+    .b{fill:#fff;stroke:#1a45ff;stroke-width:2.5}
+    .ba{fill:#eef2ff;stroke:#1a45ff;stroke-width:3}
+    .t{font-family:'Space Grotesk',Inter,sans-serif;font-weight:700;fill:#0b1020;font-size:22px;text-anchor:middle}
+    .s{font-family:Inter,sans-serif;fill:#5c6b82;font-size:14px;text-anchor:middle}
+    .nt{fill:#fff;font-family:Inter,sans-serif;font-weight:700;font-size:13px;text-anchor:middle}
+  </style>
+  <rect class="b" x="50" y="180" width="160" height="72" rx="14"/>
+  <text class="t" x="130" y="214">Caller</text><text class="s" x="130" y="236">external</text>
+  <rect class="ba" x="410" y="168" width="170" height="96" rx="14"/>
+  <text class="t" x="495" y="208">Service A</text><text class="s" x="495" y="230">orchestrates</text>
+  <rect class="b" x="800" y="46" width="160" height="72" rx="14"/>
+  <text class="t" x="880" y="88">Service B</text>
+  <rect class="b" x="800" y="312" width="160" height="72" rx="14"/>
+  <text class="t" x="880" y="354">Service C</text>
+  <path d="M212,202 L404,202" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah1)"/>
+  <path d="M404,232 L212,232" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag1)"/>
+  <path d="M566,186 L800,108" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah1)"/>
+  <path d="M800,130 L566,208" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag1)"/>
+  <path d="M566,246 L800,324" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah1)"/>
+  <path d="M800,346 L566,268" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag1)"/>
+  <circle cx="300" cy="188" r="13" fill="#1a45ff"/><text class="nt" x="300" y="193">1</text>
+  <circle cx="300" cy="246" r="13" fill="#5c6b82"/><text class="nt" x="300" y="251">6</text>
+  <circle cx="672" cy="138" r="13" fill="#1a45ff"/><text class="nt" x="672" y="143">2</text>
+  <circle cx="700" cy="178" r="13" fill="#5c6b82"/><text class="nt" x="700" y="183">3</text>
+  <circle cx="672" cy="292" r="13" fill="#1a45ff"/><text class="nt" x="672" y="297">4</text>
+  <circle cx="700" cy="332" r="13" fill="#5c6b82"/><text class="nt" x="700" y="337">5</text>
+</svg>
 </div>
 
-<p class="flow-cap">Your code calls a <code>Context</code> for anything that must be durable — Restate records it.</p>
+<p class="flow-cap"><b>1</b> Caller→A · <b>2</b> A→B · <b>3</b> B→A · <b>4</b> A→C · <b>5</b> C→A · <b>6</b> A→Caller (synthesized) &nbsp;—&nbsp; just functions calling functions.</p>
 
 <!--
-SPEAKER: Everything durable goes through ctx. Plain Java between ctx calls is just
-plain Java (re-run freely on replay). Anything with a side effect or that must be
-remembered goes through ctx. Three flavors of handler use three flavors of context.
+SPEAKER: This is how you THINK about it and how you WRITE it: plain services calling
+each other and returning results. A is an orchestrator that fans out to B and C and
+combines the answers. Blue = calls, dashed grey = returns. Next slide: what actually
+happens underneath.
+-->
+
+---
+
+## Request flow — the physical view
+
+Same logic — but every call is brokered by **Restate**, which journals each hop.
+
+<div style="text-align:center">
+<svg viewBox="0 0 1000 430" width="880" style="max-width:100%;height:auto">
+  <defs>
+    <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1a45ff"/></marker>
+    <marker id="ag2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9aa6bd"/></marker>
+  </defs>
+  <style>
+    .b2{fill:#fff;stroke:#1a45ff;stroke-width:2.5}
+    .hub{fill:#1a45ff;stroke:#001880;stroke-width:3}
+    .th{font-family:'Space Grotesk',Inter,sans-serif;font-weight:700;fill:#fff;font-size:24px;text-anchor:middle}
+    .sh{font-family:Inter,sans-serif;fill:#cdd9ff;font-size:14px;text-anchor:middle}
+    .t2{font-family:'Space Grotesk',Inter,sans-serif;font-weight:700;fill:#0b1020;font-size:21px;text-anchor:middle}
+    .s2{font-family:Inter,sans-serif;fill:#5c6b82;font-size:13px;text-anchor:middle}
+  </style>
+  <rect class="b2" x="40" y="180" width="150" height="72" rx="14"/>
+  <text class="t2" x="115" y="214">Caller</text><text class="s2" x="115" y="234">external</text>
+  <rect class="hub" x="378" y="138" width="244" height="172" rx="18"/>
+  <text class="th" x="500" y="180">RESTATE</text><text class="sh" x="500" y="202">broker · durable log</text>
+  <rect x="430" y="232" width="140" height="13" rx="3" fill="#cdd9ff"/>
+  <rect x="430" y="252" width="140" height="13" rx="3" fill="#cdd9ff"/>
+  <rect x="430" y="272" width="108" height="13" rx="3" fill="#9fb4ff"/>
+  <rect class="b2" x="802" y="44" width="158" height="64" rx="14"/><text class="t2" x="881" y="82">Service A</text>
+  <rect class="b2" x="802" y="184" width="158" height="64" rx="14"/><text class="t2" x="881" y="222">Service B</text>
+  <rect class="b2" x="802" y="324" width="158" height="64" rx="14"/><text class="t2" x="881" y="362">Service C</text>
+  <path d="M190,206 L378,206" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah2)"/>
+  <path d="M378,230 L190,230" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag2)"/>
+  <path d="M610,186 L802,90" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah2)"/>
+  <path d="M802,110 L610,206" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag2)"/>
+  <path d="M624,224 L802,212" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah2)"/>
+  <path d="M802,234 L624,246" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag2)"/>
+  <path d="M610,266 L802,356" fill="none" stroke="#1a45ff" stroke-width="2.5" marker-end="url(#ah2)"/>
+  <path d="M802,376 L610,286" fill="none" stroke="#9aa6bd" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ag2)"/>
+</svg>
+</div>
+
+<p class="flow-cap">Every hop goes <b>through Restate and into its log before the target runs</b> — that recorded journal is what lets any step resume after a crash.</p>
+
+<!--
+SPEAKER: The punchline. The clean A→B→C graph from the last slide is an illusion of
+directness — physically every call is brokered by Restate and written to the log
+first. Nothing runs until it's durably recorded. That's the whole reliability story
+in one picture: there is no "lost" in-flight call, because the call IS a log record.
+-->
+
+<!--
+NOTE: the per-step ctx.* API (run/get/set/sleep/call) is covered on the "toolbox" slide.
 -->
 
 ---

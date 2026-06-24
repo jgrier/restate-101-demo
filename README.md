@@ -64,10 +64,12 @@ Read them without building anything: **[live deck](https://jgrier.github.io/rest
 
 The deck is [Marp](https://marp.app) markdown. To present or export it yourself:
 
+The deck uses inline HTML/SVG, so always pass `--html` when rendering:
+
 ```bash
-npx @marp-team/marp-cli@latest slides/restate-101.md            # -> HTML
-npx @marp-team/marp-cli@latest slides/restate-101.md --pdf      # -> PDF
-npx @marp-team/marp-cli@latest -p -s slides/                    # live preview server
+npx @marp-team/marp-cli@latest --html slides/restate-101.md             # -> HTML
+npx @marp-team/marp-cli@latest --html slides/restate-101.md --pdf        # -> PDF
+npx @marp-team/marp-cli@latest --html -p -s slides/                     # live preview server
 ```
 
 Speaker notes live in `<!-- -->` comments on each slide (shown in Marp presenter
