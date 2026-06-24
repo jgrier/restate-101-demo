@@ -11,6 +11,9 @@ It includes a slide deck, a runnable **Java** demo (one handler per building blo
 and a clickable browser UI so you can drive the demo without typing curl. Everything
 runs in Docker — no local installs beyond Docker required.
 
+**📊 Slides:** [view the deck live](https://jgrier.github.io/restate-101-demo/) ·
+[download the PDF](slides/restate-101.pdf)
+
 ## Quick start
 
 Requires only **Docker**. From the repo root:
@@ -54,7 +57,10 @@ the Java service with Gradle, register it, and drive it with curl).
 
 ## Using the slides
 
-The deck is [Marp](https://marp.app) markdown. To present or export:
+Read them without building anything: **[live deck](https://jgrier.github.io/restate-101-demo/)**
+(rendered via GitHub Pages) or the **[PDF](slides/restate-101.pdf)**.
+
+The deck is [Marp](https://marp.app) markdown. To present or export it yourself:
 
 ```bash
 npx @marp-team/marp-cli@latest slides/restate-101.md            # -> HTML
