@@ -35,6 +35,8 @@ In the UI you can: run the **Service / Saga** (tick `blocked` to trigger a rollb
 deposit/withdraw on the **Virtual Object** (incl. a 20-way concurrent test), and
 start/approve the **Workflow**. A request console logs every call and its response.
 
+![The demo UI — one panel per building block, with a live request console](docs/demo-ui.png)
+
 > **Survives-a-restart demo:** start a workflow, run `docker compose restart restate`
 > while it's parked, then approve it — it resumes from the persisted log.
 
